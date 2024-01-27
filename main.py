@@ -19,3 +19,4 @@ print(f"Publication date: {article.publish_date}")
 print(f"Summary: {article.summary}")
 
 # Extractive summarization
+
