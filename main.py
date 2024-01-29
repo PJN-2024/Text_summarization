@@ -1,11 +1,45 @@
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize, sent_tokenize
 import tkinter as tk
 from textblob import TextBlob
-from newspaper import Article
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
+from newspaper import Article
+
+
+# Functions
+def text_summarizer(text):
+    stop_words = set(stopwords.words("english"))
+    words = word_tokenize(text)
+    filtered_words = [word.lower() for word in words if word.isalnum() and word.lower() not in stop_words]
+
+    freq_table = dict()
+    for word in filtered_words:
+        if word in freq_table:
+            freq_table[word] += 1
+        else:
+            freq_table[word] = 1
+
+    sentences = sent_tokenize(text)
+    sentence_value = dict()
+    for sentence in sentences:
+        for word, freq in freq_table.items():
+            if word.lower() in sentence.lower():
+                if sentence in sentence_value:
+                    sentence_value[sentence] += freq
+                else:
+                    sentence_value[sentence] = freq
+
+    sum_values = sum(sentence_value.values())
+    average = int(sum_values / len(sentence_value))
+
+    summary = ""
+    for sentence in sentences:
+        if sentence in sentence_value and sentence_value[sentence] > average:
+            summary += " " + sentence
+
+    return summary
 
 
 def generate_abstractive_summary(text, sentences_count=10):
@@ -41,27 +75,27 @@ def summarize_and_display(article):
     sentiment.insert("1.0", f"Polarity: {analysis.polarity}, Sentiment: {'positive' if analysis.polarity > 0 else 'negative' if analysis.polarity < 0 else 'neutral'}")
 
     abstractive_summary = generate_abstractive_summary(article.text)
+
     second_summary.config(state="normal")
     second_summary.delete("1.0", "end")
     second_summary.insert("1.0", abstractive_summary)
     second_summary.config(state="disabled")
 
+    # Move extractive summarization to the end
     extractive_summary = text_summarizer(article.text)
     with open("original_text.txt", "w", encoding="utf-8") as file:
         file.write(article.text)
+
     with open("summaries.txt", "w", encoding="utf-8") as file:
         file.write(
             f"Extractive summary newspaper3k:\n{article.summary}\n\nExtractive summary through function:\n{extractive_summary}\n\nAbstractive summary:\n{abstractive_summary}")
+
+    # Update the third summary
+    extractive_summary_custom = text_summarizer(article.text)
     third_summary.config(state="normal")
     third_summary.delete("1.0", "end")
-    third_summary.insert("1.0", extractive_summary)
+    third_summary.insert("1.0", extractive_summary_custom)
     third_summary.config(state="disabled")
-
-    title.config(state="disabled")
-    author.config(state="disabled")
-    publication.config(state="disabled")
-    summary.config(state="disabled")
-    sentiment.config(state="disabled")
 
 
 def get_article_and_summarize():
@@ -70,37 +104,10 @@ def get_article_and_summarize():
     summarize_and_display(article)
 
 
-def text_summarizer(text):
-    stop_words = set(stopwords.words("english"))
-    words = word_tokenize(text)
-    filtered_words = [word.lower() for word in words if word.isalnum() and word.lower() not in stop_words]
-    freq_table = dict()
-    for word in filtered_words:
-        if word in freq_table:
-            freq_table[word] += 1
-        else:
-            freq_table[word] = 1
-    sentences = sent_tokenize(text)
-    sentence_value = dict()
-    for sentence in sentences:
-        for word, freq in freq_table.items():
-            if word.lower() in sentence.lower():
-                if sentence in sentence_value:
-                    sentence_value[sentence] += freq
-                else:
-                    sentence_value[sentence] = freq
-    sum_values = sum(sentence_value.values())
-    average = int(sum_values / len(sentence_value))
-    summary = ""
-    for sentence in sentences:
-        if sentence in sentence_value and sentence_value[sentence] > average:
-            summary += " " + sentence
-    return summary
-
-
+# Interface
 root = tk.Tk()
 root.title("News Summarizer")
-root.geometry("1200x1000")
+root.geometry("1200x1000")  # Increased height to accommodate the third summary
 
 title_label = tk.Label(root, text="Title")
 title_label.pack()
